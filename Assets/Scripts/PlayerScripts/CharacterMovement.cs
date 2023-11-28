@@ -5,13 +5,13 @@ using UnityEngine.UI;
 
 public class CharacterMovement : MonoBehaviour {
     [SerializeField] private float speed;
+    [SerializeField] private float rotationSpeed;
     [SerializeField] private Transform camera;
     [SerializeField] private float sensitivityY;
     [SerializeField] private float sensitivityX;
     [SerializeField] private Image teleportImage;
     
     private Rigidbody rigidbody;
-    private CameraScript cameraScript;
     private bool onGround;
     private bool canTeleport;
     
@@ -21,26 +21,23 @@ public class CharacterMovement : MonoBehaviour {
     
     private void Awake() {
         rigidbody = GetComponent<Rigidbody>();
-        cameraScript = camera.gameObject.GetComponent<CameraScript>();
         canTeleport = true;
-    }
-
-    private void Start() {
-        cameraScript.OnColliderEnter += (sender, args) => {
-            Debug.Log("CAMERA ENTER");
-        };
     }
 
     private void Update() {
         Move();
-        CameraHandler();
     }
 
     private void Move() {
-        
         float normalizedSpeed = speed * Time.deltaTime;
         float horizontal = Input.GetAxis("Horizontal") * normalizedSpeed;
         float vertical = Input.GetAxis("Vertical") * normalizedSpeed;
+
+        bool isPlayerMoving = horizontal != 0 || vertical != 0;
+        
+        if (isPlayerMoving) {
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, camera.rotation.eulerAngles.y, 0), rotationSpeed);
+        }
         
         float gravity = onGround ? 0 : -10;
         if (Input.GetKey(KeyCode.Space) && onGround) {
@@ -48,31 +45,6 @@ public class CharacterMovement : MonoBehaviour {
         }
 
         rigidbody.velocity = transform.TransformDirection(new Vector3(horizontal, gravity, vertical));
-    }
-
-    private void CameraHandler() {
-        float axisX = Input.GetAxis("Mouse X");
-        float axisY = Input.GetAxis("Mouse Y");
-
-        float mouseWheel = Input.GetAxis("Mouse ScrollWheel") * -15;
-        cameraZoom = Mathf.Clamp(cameraZoom + mouseWheel, 20, 60);
-
-        camera.Translate(Vector3.up * (-axisY * sensitivityY));
-        camera.Translate(Vector3.right * (-axisX * sensitivityX));
-        
-        Vector3 pointY = new Vector3(transform.position.x, camera.position.y, transform.position.z);
-        float distance = Vector3.Distance(pointY, camera.position);
-        if (distance < 15) {
-            camera.Translate(Vector3.up * (axisY * sensitivityY));
-        }
-
-        Vector3 dir = (transform.position - camera.position).normalized;
-        camera.position = transform.position - dir * cameraZoom;
-
-        camera.LookAt(transform);
-        Vector3 inFrontOfPlayerPoint = transform.position + dir * 20;
-        Vector3 playerRotationPoint = new Vector3(inFrontOfPlayerPoint.x, transform.position.y, inFrontOfPlayerPoint.z);
-        transform.LookAt(playerRotationPoint);
     }
     
     private void OnDrawGizmos() {
