@@ -33,12 +33,13 @@ public class CharacterMovement : MonoBehaviour {
     }
 
     private void Move() {
-        float normalizedSpeed = speed * Time.deltaTime;
-        float horizontal = Input.GetAxis("Horizontal") * normalizedSpeed;
-        float vertical = Input.GetAxis("Vertical") * normalizedSpeed;
-        float moveForward = (Mathf.Abs(horizontal) + Mathf.Abs(vertical)) / 2;
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        
+        float moveAmount = speed * Time.deltaTime;
+        float moveForward = (new Vector3(horizontal, 0, vertical).normalized * moveAmount).magnitude;
 
-        bool isPlayerMoving = horizontal != 0 || vertical != 0;
+        bool isPlayerMoving = moveForward > 0;
         
         if (isPlayerMoving) {
             float rotationY = camera.rotation.eulerAngles.y + Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg;
@@ -57,7 +58,7 @@ public class CharacterMovement : MonoBehaviour {
         gravity -= Time.deltaTime * gravitySpeed;
         gravity = Mathf.Clamp(gravity, -10, 100);
         
-        rigidbody.velocity = transform.TransformDirection(new Vector3(0, gravity, moveForward));
+        rigidbody.velocity = transform.TransformDirection(0, gravity, moveForward);
     }
     
     private void OnDrawGizmos() {
