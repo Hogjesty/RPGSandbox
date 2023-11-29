@@ -1,23 +1,27 @@
 using System;
 using System.Collections;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class CharacterMovement : MonoBehaviour {
     [SerializeField] private float speed;
     [SerializeField] private float rotationSpeed;
-    [SerializeField] private Transform camera;
+    [SerializeField] private float gravitySpeed;
     [SerializeField] private float sensitivityY;
     [SerializeField] private float sensitivityX;
+    
+    [SerializeField] private Transform camera;
+    [SerializeField] private Transform groundPoint;
     [SerializeField] private Image teleportImage;
     
     private Rigidbody rigidbody;
     private bool onGround;
     private bool canTeleport;
     
-
     private float verticalRotate;
     private float cameraZoom = 30;
+    private float gravity = -10;
     
     private void Awake() {
         rigidbody = GetComponent<Rigidbody>();
@@ -32,19 +36,28 @@ public class CharacterMovement : MonoBehaviour {
         float normalizedSpeed = speed * Time.deltaTime;
         float horizontal = Input.GetAxis("Horizontal") * normalizedSpeed;
         float vertical = Input.GetAxis("Vertical") * normalizedSpeed;
+        float moveForward = (Mathf.Abs(horizontal) + Mathf.Abs(vertical)) / 2;
 
         bool isPlayerMoving = horizontal != 0 || vertical != 0;
         
         if (isPlayerMoving) {
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, camera.rotation.eulerAngles.y, 0), rotationSpeed);
-        }
-        
-        float gravity = onGround ? 0 : -10;
-        if (Input.GetKey(KeyCode.Space) && onGround) {
-            gravity = 10;
+            float rotationY = camera.rotation.eulerAngles.y + Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, rotationY, 0), rotationSpeed);
         }
 
-        rigidbody.velocity = transform.TransformDirection(new Vector3(horizontal, gravity, vertical));
+        bool isPlayerOnGround = Physics.OverlapSphere(groundPoint.position, 0.3f)
+            .Where(x => x.gameObject.CompareTag("Ground"))
+            .ToList()
+            .Count > 0;
+        
+        if (Input.GetKey(KeyCode.Space) && isPlayerOnGround) {
+            gravity = 30;
+        }
+
+        gravity -= Time.deltaTime * gravitySpeed;
+        gravity = Mathf.Clamp(gravity, -10, 100);
+        
+        rigidbody.velocity = transform.TransformDirection(new Vector3(0, gravity, moveForward));
     }
     
     private void OnDrawGizmos() {
@@ -88,19 +101,5 @@ public class CharacterMovement : MonoBehaviour {
         teleportImage.enabled = false;
         yield return new WaitForSeconds(coolDown);
         canTeleport = true;
-    }
-
-    private void OnCollisionEnter(Collision collision) {
-        Debug.Log("ENTER");
-        if (collision.gameObject.CompareTag("Ground")) {
-            onGround = true;
-        }
-    }
-
-    private void OnCollisionExit(Collision other) {
-        Debug.Log("EXIT");
-        if (other.gameObject.CompareTag("Ground")) {
-            onGround = false;
-        }
     }
 }
